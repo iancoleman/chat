@@ -1,0 +1,119 @@
+<html>
+<head>
+	<title>Pintle Test Page</title>
+	<style type="text/css">
+	html {
+		overflow: hidden;
+	}
+
+	body {
+		overflow: hidden;
+		padding: 0;
+		margin: 0;
+		width: 100%;
+		height: 100%;
+		background: gray;
+	}
+
+	#log {
+		background: white;
+		margin: 0;
+		padding: 0.5em 0.5em 0.5em 0.5em;
+		top: 0.5em;
+		left: 0.5em;
+		right: 0.5em;
+		overflow: auto;
+		height: 100%;
+	}
+
+	#form {
+		padding: 0 0.5em 0 0.5em;
+		margin: 0;
+		top: 1em;
+		left: 0px;
+		width: 100%;
+		overflow: hidden;
+	}
+
+	</style>
+</head>
+<body>
+	<form id="form">
+		<input type="text" id="msg" />
+		<input type="submit" value="Send" />
+	</form>
+	<div id="log"></div>
+
+	<script type="text/javascript">
+
+	var conn;
+	var msg = document.getElementById("msg");
+	var log = document.getElementById("log");
+	var form = document.getElementById("form");
+
+	function appendLog(msg) {
+		log.appendChild(msg)
+	}
+
+	function submitForm(e) {
+		e.preventDefault();
+		if (!conn) {
+			return false;
+		}
+		if (!msg.value) {
+			return false;
+		}
+		var toSend = JSON.stringify({
+			Ext: "chat",
+			Method: "Send",
+			Data: msg.value
+		});
+		conn.send(toSend);
+		msg.value = "";
+		msg.focus();
+		return false
+	}
+
+	form.addEventListener("submit", submitForm);
+
+	if (window["WebSocket"]) {
+		conn = new WebSocket("ws://" + window.location.host + "/ws");
+		conn.onopen = function() {
+			conn.send(JSON.stringify({
+				Ext: "chat",
+				Method: "Subscribe",
+				Data: "default"
+			}));
+		}
+		conn.onclose = function(evt) {
+			var el = document.createElement("div");
+			el.innerHTML = "<b>Connection closed.</b>"
+			appendLog(el)
+		}
+		conn.onmessage = function(evt) {
+			var el = document.createElement("div");
+			var text = "";
+			var t;
+			var received = JSON.parse(evt.data);
+			if (received.Method == "Send") {
+				text = received.Data || received.Error;
+				t = document.createTextNode(text);
+				el.appendChild(t);
+			} else if (received.Method == "Subscribe") {
+				text = "Subscribed to " + received.Data;
+				t = document.createTextNode(text);
+				el.appendChild(t);
+			}
+			appendLog(el)
+		}
+	} else {
+		var d = document.createElement("div");
+		d.innerHTML = "Your browser does not support WebSockets."
+		appendLog(d);
+	}
+
+	msg.focus();
+
+	</script>
+</body>
+</html>
